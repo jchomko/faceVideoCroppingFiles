@@ -128,7 +128,7 @@ void testApp::update(){
     
     screen.resize(vidWidth, vidHeight);
     
-    vidSaver.addFrame(screen.getPixels(), ofGetElapsedTimef()-timeStamp);
+    vidSaver.addFrame(screen.getPixels(), 0.03); // ofGetElapsedTimef()-timeStamp
     timeStamp = ofGetElapsedTimef();
     
     if(v.x != 0){
@@ -143,7 +143,9 @@ void testApp::update(){
         vidPlayer.nextFrame();
     }else{
         cout<< "movie done";
+        if(vidSaver.bAmSetupForRecording()){
         vidSaver.finishMovie();
+        }
         
         newMovie();
         
@@ -190,7 +192,7 @@ void testApp::newMovie(){
     
     
     if(files.size() > 0 && fileCounter < files.size()){
-        cout << "file counter";
+        //cout << "file counter";
         cout << dir.getPath(fileCounter); //+  files[fileCounter].getFileName();
         vidPlayer.loadMovie(dir.getPath(fileCounter));
     
@@ -215,7 +217,7 @@ void testApp::newMovie(){
     //setup recorder with new file name
     vidSaver.setup(vidWidth, vidHeight, fileName);
     
-    
+    facePositions.clear();
     
 }
 
