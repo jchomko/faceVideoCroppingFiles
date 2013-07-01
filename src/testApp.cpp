@@ -9,7 +9,8 @@ testApp::~testApp(){
 void testApp::setup(){
 	img.loadImage("test.jpg");
 	finder.setup("haarcascade_frontalface_alt3.xml");
-   
+    path = "/Users/fabrica197/Documents/of_v0073_osx_release/apps/faceVideoRecord/faceVideoCroppingFiles/bin/data/input";
+    
     fileName = ofGetElapsedTimef();
     facePresentAvg.push_back(0);
     
@@ -24,134 +25,57 @@ void testApp::setup(){
     timeStamp = ofGetElapsedTimef();
     
     vidSaver.setCodecQualityLevel(OF_QT_SAVER_CODEC_QUALITY_LOSSLESS);
+    
    
    
-    facePositionAvgLength = 3;
     
     avgPos = ofVec3f(0,0,0);
     avgTotal = ofVec3f(0,0,0);
     
-    dir.open("");
+    dir.open(path);
     
-    cout<< dir.listDir();
-    dir.size();
-    files = dir.getFiles();
+    cout <<  dir.listDir();
+   
+    cout <<  dir.size();
+    
+    //files = dir.getFiles();
 
     
     for(int i = 0; i < dir.size(); i ++){
-        if(dir.getFile(i).getExtension() == ".mov"){
+        cout<<  dir.getFile(i).getExtension();
+        if(dir.getFile(i).getExtension() == "mov"){
             files.push_back(dir.getFile(i));
             cout << dir.getFile(i).getFileName();
         }
       
     }
+    cout << files.size();
     
-    fileCounter = 0;
+    newMovie();
     
-    if(files.size() > 0){
-        vidPlayer.loadMovie(files[fileCounter].getFileName());
-    }
     
-    vidWidth  = vidPlayer.width;
-    vidHeight = vidPlayer.height;
     
     
     colorImage.allocate( vidWidth, vidHeight);
     grayImage.allocate( vidWidth, vidHeight);
     backImage.allocate( vidWidth, vidHeight);
     
-    averageSampleSize = 5;
+    fbo.allocate(vidWidth, vidHeight);
+    screen.allocate(vidWidth, vidHeight, OF_IMAGE_COLOR);
+    img.allocate(vidWidth, vidHeight, OF_IMAGE_COLOR);
+    
+    //averageSampleSize = 30;
     tex.allocate(vidWidth,vidHeight, GL_RGB);
     
-
+    facePositionAvgLength = 20;
+    
+    m = 1.7;
 }
 
 //--------------------------------------------------------------
 void testApp::update(){
    
-    vidPlayer.getCurrentFrame();
     
-  
-    colorImage.setFromPixels(vidPlayer.getPixels(), vidWidth,vidHeight);
-    grayImage = colorImage;
-    finder.findHaarObjects(grayImage.getPixelsRef());
-    
-    
-    
-    
-    //    contourFinder.findContours(grayImage, 20, (320*180)/3, 10,false);
-        
-//    if(contourFinder.nBlobs > 0){
-//        facePresentAvg.push_back(1);
-//       
-//     }else{
-//        facePresentAvg.push_back(0);
-//       
-//    }
-//    
-//    if(facePresentAvg.size() > 30){
-//        facePresentAvg.erase(facePresentAvg.begin());
-//    }
-//    
-//    
-//    float fp = 0;
-//    
-//    for(int i = 0; i < facePresentAvg.size(); i ++){
-//        fp += facePresentAvg[i];
-//        
-//    }
-//    
-//    fp = fp/facePresentAvg.size();
-////        cout<< fp;
-////        cout << ",";
-//    
-//    if(fp > 0.5){
-//        facePresent = true;
-//        
-//    }else{
-//        facePresent = false;
-//    }
-//    
-//    //On recording start / face gone
-//    if(facePresent && isRecording == false){
-//        isRecording = true;
-//        //get new file name
-//        createFileName();
-//        //get new timestamp
-//        timeStamp = ofGetElapsedTimef();
-//        //
-//         movieStart = ofGetElapsedTimef();
-//    
-//        //setup recorder with new file name
-//        vidSaver.setup(camWidth, camHeight, fileName);
-//       
-//        
-//        
-//    }
-//    
-//    //On recording end/ face gone
-//    if(facePresent == false && isRecording == true){
-//        isRecording = false;
-//        //finalize movie
-//        vidSaver.finishMovie();
-//        learnBackground = true;
-//    }
-//    
-//    
-//    if(facePresent && isRecording){
-//        float time = ofGetElapsedTimef() - timeStamp;
-//        // vidSaver.addFrame(vidGrabber2.getPixels(),time);
-//        vidSaver.addFrame(colorImage.getPixels(), 0.075);
-//        timeStamp = ofGetElapsedTimef();
-//        
-//    }
-//   }
-//   
-//    if(isRecording && ofGetElapsedTimef() - movieStart > 10){
-//        movieStart = ofGetElapsedTimef();
-//        learnBackground = true;
-//        cout << "new backgroud";
-//    }
     
     avgPos.set(0,0,0);
     avgTotal.set(0,0,0);
@@ -161,14 +85,13 @@ void testApp::update(){
         
     }
     
-    //cout <<facePositions.size();
     
     for(int i = 0 ; i < facePositions.size(); i ++){
         ofVec3f  v = facePositions[i];
-         
-         avgTotal.x += v.x;
-         avgTotal.y += v.y;
-         avgTotal.z += v.z;
+        
+        avgTotal.x += v.x;
+        avgTotal.y += v.y;
+        avgTotal.z += v.z;
         
     }
     
@@ -176,6 +99,57 @@ void testApp::update(){
     avgPos.x = avgTotal.x/facePositions.size();
     avgPos.y = avgTotal.y/facePositions.size();
     avgPos.z = avgTotal.z/facePositions.size();
+    
+    
+    
+    
+    
+    vidPlayer.getCurrentFrame();
+    colorImage.setFromPixels(vidPlayer.getPixels(), vidWidth,vidHeight);
+    grayImage = colorImage;
+    
+    finder.findHaarObjects(grayImage.getPixelsRef());
+    
+    ofVec3f v;
+    
+    img.setFromPixels(vidPlayer.getPixels(), vidWidth, vidHeight, OF_IMAGE_COLOR);
+    
+    if( finder.blobs.size() > 0){
+	for(int i = 0; i < finder.blobs.size(); i++) {
+        
+		ofRectangle cur = finder.blobs[i].boundingRect;
+    
+        v = ofVec3f(cur.x, cur.y, cur.height * m);
+       
+        screen.cropFrom(img, avgPos.x - (avgPos.z *0.33333333), avgPos.y -(avgPos.z * .16),  avgPos.z * 1.33, avgPos.z);
+        
+	}
+    
+    
+    screen.resize(vidWidth, vidHeight);
+    
+    vidSaver.addFrame(screen.getPixels(), ofGetElapsedTimef()-timeStamp);
+    timeStamp = ofGetElapsedTimef();
+    
+    if(v.x != 0){
+      facePositions.push_back(v);
+        }
+    
+    }
+    
+    bool isMovieDone = vidPlayer.getIsMovieDone();
+    
+    if(!isMovieDone){
+        vidPlayer.nextFrame();
+    }else{
+        cout<< "movie done";
+        vidSaver.finishMovie();
+        
+        newMovie();
+        
+    }
+    
+    
     //cout << avgPos.x;
     
 }
@@ -183,32 +157,11 @@ void testApp::update(){
 //--------------------------------------------------------------
 void testApp::draw(){
     
-    grayImage.draw(0, 0);
+    screen.draw(0, 0);
+    
 	
     ofNoFill();
-    ofVec3f v;
-    //vidGrabber2.draw(camWidth,0,camWidth,camHeight);
-    //ofxCvColorImage face;
-    
-    
-	for(int i = 0; i < finder.blobs.size(); i++) {
-        
-		ofRectangle cur = finder.blobs[i].boundingRect;
-        //face.allocate(cur.width,cur.height);
-        v = ofVec3f(cur.x, cur.y, cur.height);
-        //tex.loadScreenData(cur.x, cur.y,  cur.width, cur.height);
-        tex.loadScreenData(avgPos.x, avgPos.y,  avgPos.z, avgPos.z);
-        
-		//ofRect(cur.x, cur.y, cur.width, cur.height);
-	}
-    
    
-    tex.draw(0,0, 320, 320);
-    ofSetColor(255, 255,255);
-    ofRect(avgPos.x, avgPos.y,  avgPos.z, avgPos.z);
-    if(v.x != 0){
-    facePositions.push_back(v);
-    }
        if(facePresent){
         ofPushStyle();
         //ofFill();
@@ -234,6 +187,26 @@ void testApp::createFileName(void){
 
 void testApp::newMovie(){
     
+    
+    
+    if(files.size() > 0 && fileCounter < files.size()){
+        cout << "file counter";
+        cout << dir.getPath(fileCounter); //+  files[fileCounter].getFileName();
+        vidPlayer.loadMovie(dir.getPath(fileCounter));
+    
+    }
+    
+    vidWidth  = vidPlayer.width;
+    vidHeight = vidPlayer.height;
+    
+    if(fileCounter < files.size()){
+        fileCounter ++;
+    }else{
+        std::exit(1);
+    }
+    
+    
+    
     createFileName();
     
     //get new timestamp
@@ -242,15 +215,11 @@ void testApp::newMovie(){
     //setup recorder with new file name
     vidSaver.setup(vidWidth, vidHeight, fileName);
     
-    fileCounter ++;
     
-    if(files.size() > 0 && fileCounter < files.size()){
-        
-        vidPlayer.loadMovie(files[fileCounter].getFileName());
     
-    }
-
 }
+
+
 
 
 //--------------------------------------------------------------

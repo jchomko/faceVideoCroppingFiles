@@ -49,15 +49,20 @@ class testApp : public ofBaseApp{
         int threshold;
         ofVideoPlayer vidPlayer;
         ofDirectory dir;
+        ofFbo fbo;
         vector<ofFile> files;
         int fileCounter;
     
         ofPixels scaledPix;
         ofPixels videoPix;
+        ofImage screen;
         ofTexture tex;
         unsigned char * videoPixels;
         int vidWidth;
         int vidHeight;
+        float m;
+    
+    string path;
        };
 
 
